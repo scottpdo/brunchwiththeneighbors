@@ -34,3 +34,32 @@ console.log(
   countChars(layers[leastZeroesLayerIndex], "1") *
     countChars(layers[leastZeroesLayerIndex], "2")
 );
+
+const BLACK = "0";
+const WHITE = "1";
+const TRANSPARENT = "2";
+
+function display(input, width) {
+  let output = "";
+  for (let i = 0; i < input.length; i++) {
+    output += input[i];
+    if ((i + 1) % width === 0) output += "\n";
+  }
+  console.log(output);
+}
+
+function render(input, width, height) {
+  const layers = parseInput(input, width, height);
+  const output = new Array(width * height).fill(" ");
+  layers.forEach(layer => {
+    for (let i = 0; i < layer.length; i++) {
+      const char = layer[i];
+      if (char === BLACK || char === WHITE) {
+        if (output[i] === " ") output[i] = char === BLACK ? "_" : "█";
+      }
+    }
+  });
+  display(output.join(""), width);
+}
+
+render(input, 25, 6);
