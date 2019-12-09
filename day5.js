@@ -30,7 +30,6 @@ function exec(i, program, input) {
     program[a] = input;
     return exec(i + 2, program, input);
   } else if (instruction === 4) {
-    console.log("output code", program[a]);
     return exec(i + 2, program);
   } else if (instruction === 5) {
     if (program[a] !== 0) return exec(program[b], program);
