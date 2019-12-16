@@ -1,20 +1,28 @@
 const program = parse(require("./data/day9"));
 
 const INSTRUCTIONS = {
-  1: "add",
-  2: "multiply",
-  3: "input",
-  4: "output",
-  5: "jump if zero",
-  6: "jump if not zero",
-  7: "less than",
-  8: "equal to",
-  9: "relative base",
-  99: "end"
+  ADD: 1,
+  MULTIPLY: 2,
+  INPUT: 3,
+  OUTPUT: 4,
+  JUMP_IF_TRUE: 5,
+  JUMP_IF_FALSE: 6,
+  LT: 7,
+  EQ: 8,
+  RELATIVE_BASE: 9,
+  END: 99
+};
+
+const getInstructionName = n => {
+  for (let i in INSTRUCTIONS) if (INSTRUCTIONS[i] === n) return i;
+  return null;
 };
 
 function parse(program) {
-  return program.split(",").map(n => +n);
+  return {
+    extraMemory: {},
+    program: program.split(",").map(n => +n)
+  };
 }
 
 function getParameter(program, i, mode, relativeBase) {
@@ -36,66 +44,77 @@ function unblock() {
 }
 
 function write(program, index, value) {
-  while (program.length < index + 1) program.push(0);
-  program[index] = value;
+  if (index >= program.program.length) {
+    program.extraMemory[index] = value;
+  } else {
+    program.program[index] = value;
+  }
 }
 
 function read(program, index) {
   console.assert(index >= 0, index);
-  if (index >= program.length) write(program, index, 0);
-  return program[index];
+  if (index >= program.program.length) return program.extraMemory[index] || 0;
+  return program.program[index];
 }
 
 async function exec(program, inputs, outputs) {
   let pointer = 0;
   let relativeBase = 0;
 
-  const innerProgram = Array.from(program);
-
   let i = 0;
   while (true) {
-    const value = innerProgram[pointer];
+    const value = read(program, pointer);
 
     // parse instruction code and parameter modes
     const instruction = value % 100;
-    if (instruction === 99) break;
+    if (instruction === INSTRUCTIONS.END) break;
 
     const param1mode = ((value / 100) | 0) % 10;
     const param2mode = ((value / 1000) | 0) % 10;
 
     // set the parameters
-    const a = getParameter(innerProgram, pointer + 1, param1mode, relativeBase);
-    const b = getParameter(innerProgram, pointer + 2, param2mode, relativeBase);
-    const index = innerProgram[pointer + 3];
+    const a = getParameter(program, pointer + 1, param1mode, relativeBase);
+    const b = getParameter(program, pointer + 2, param2mode, relativeBase);
+    const index = read(program, pointer + 3, 1);
 
-    if (instruction === 1) {
-      write(innerProgram, index, a + b);
+    console.log(pointer, getInstructionName(instruction), a, b);
+
+    if (instruction === INSTRUCTIONS.ADD) {
+      write(program, index, a + b);
+      console.log("  wrote", a + b, " to", index);
       pointer += 4;
-    } else if (instruction === 2) {
-      write(innerProgram, index, a * b);
+    } else if (instruction === INSTRUCTIONS.MULTIPLY) {
+      write(program, index, a * b);
+      console.log("  wrote", a * b, " to", index);
       pointer += 4;
-    } else if (instruction === 3) {
+    } else if (instruction === INSTRUCTIONS.INPUT) {
       if (inputs.length > 0) {
-        write(innerProgram, innerProgram[pointer + 1], inputs.shift());
+        console.log("   inputs", inputs, value, a, param1mode);
+        write(program, a, inputs.shift());
+        console.log("   wrote", read(program, a), "to", a);
         pointer += 2;
       } else {
         await unblock();
       }
-    } else if (instruction === 4) {
+    } else if (instruction === INSTRUCTIONS.OUTPUT) {
       outputs.push(a);
+      console.log("   outputs", outputs);
       pointer += 2;
-    } else if (instruction === 5) {
+    } else if (instruction === INSTRUCTIONS.JUMP_IF_TRUE) {
       pointer = a !== 0 ? b : pointer + 3;
-    } else if (instruction === 6) {
+    } else if (instruction === INSTRUCTIONS.JUMP_IF_FALSE) {
       pointer = a === 0 ? b : pointer + 3;
-    } else if (instruction === 7) {
-      write(innerProgram, index, a < b ? 1 : 0);
+    } else if (instruction === INSTRUCTIONS.LT) {
+      write(program, index, a < b ? 1 : 0);
+      console.log("   wrote", a < b ? 1 : 0, "to", index);
       pointer += index === pointer ? 0 : 4;
-    } else if (instruction === 8) {
-      write(innerProgram, index, a === b ? 1 : 0);
+    } else if (instruction === INSTRUCTIONS.EQ) {
+      write(program, index, a === b ? 1 : 0);
+      console.log("   wrote", a === b ? 1 : 0, "to", index);
       pointer += index === pointer ? 0 : 4;
-    } else if (instruction === 9) {
+    } else if (instruction === INSTRUCTIONS.RELATIVE_BASE) {
       relativeBase += a;
+      console.log("   increased relative base to", relativeBase);
       pointer += 2;
     }
 
@@ -117,7 +136,7 @@ async function test() {
   console.assert(three === 1125899906842624, three);
 }
 
-test();
+// test();
 
 async function testProgram() {
   const output = await exec(program, [1], []);
